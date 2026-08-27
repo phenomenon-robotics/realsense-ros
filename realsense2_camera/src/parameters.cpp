@@ -1,4 +1,4 @@
-// Copyright 2023 Intel Corporation. All Rights Reserved.
+// Copyright 2023 RealSense, Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,6 +83,10 @@ void BaseRealSenseNode::getParameters()
     _base_frame_id = (static_cast<std::ostringstream&&>(std::ostringstream() << _camera_name << "_" << _base_frame_id)).str();
     _parameters_names.push_back(param_name);
 
+    param_name = std::string("tf_prefix");
+    _tf_prefix = _parameters->setParam<std::string>(param_name, "");
+    _parameters_names.push_back(param_name);
+
 #if defined (ACCELERATE_GPU_WITH_GLSL)
     param_name = std::string("accelerate_gpu_with_glsl");
      _parameters->setParam<bool>(param_name, false, 
@@ -150,6 +154,10 @@ void BaseRealSenseNode::setDynamicParams()
                             [this](const rclcpp::Parameter& parameter)
                             {
                                 _imu_sync_method = imu_sync_method(parameter.get_value<int>());
+                                {
+                                    std::lock_guard<std::mutex> lock(_imu_callback_mutex);
+                                    _imu_history.clear();
+                                }
                                 ROS_WARN("For the 'unite_imu_method' param update to take effect, "
                                          "re-enable either gyro or accel stream.");
                             }, crnt_descriptor);
